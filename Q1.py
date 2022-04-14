@@ -90,14 +90,14 @@ def compute_centroid(K, X, sizes, csize):
     return [c / sizes[i] for i, c in enumerate(centroids)]
     
 
-def KMeans(X, N, K, csize):
+def KMeans(X, N, K, csize, spectral=False):
     """This function randomly generates n points and will run until K distinct
     partitioned clusters are formed"""
     
     # Initial problem setup
     sizes = [1] * K
     indexes = [i for i in range(N)]
-    choices = random.sample(indexes, K)
+    choices = indexes[:K] if spectral else random.sample(indexes, K)
     centroids = [X[i] for i in choices]
     
     # Initialize the clusters
@@ -149,21 +149,21 @@ def SpectralKMeans(X, N, K):
     
     # Sort to get the largest eigenvectoe/eigenvalue pairs
     # https://stackoverflow.com/questions/8092920/sort-eigenvalues-and-associated-eigenvectors-after-using-numpy-linalg-eig-in-pyt#:~:text=Use%20numpy.,use%20to%20sort%20the%20array.&text=If%20the%20eigenvalues%20are%20complex,broken%20by%20their%20imaginary%20part).
-    idx = eigenvalues.argsort()[::-1]   
+    idx = eigenvalues.argsort()[::-1]
     eigenvalues = eigenvalues[idx]
     eigenvectors = eigenvectors[:,idx]
-    eigenvectors = np.transpose(eigenvectors[:K])
+    eigenvectors = np.transpose(np.transpose(eigenvectors)[:K])
     
     # Map the old points to the new points
-    X_new = [[0, 0]] * len(X)
-    for i in range(len(X)):
-        X_new[i] = X[idx[i]]
+    X_new = np.zeros((2, N))
+    for i in range(X_new.shape[1]):
+        X_new[:, i] = np.transpose(X[idx[i], :])
     X = X_new
     
     # Take the K-dimensional points, cluster them, and bring them back to 2D    
-    eigenvectors, centroids = KMeans(eigenvectors, N, K, K)
-    for i in range(len(X)):
-        eigenvectors[i][0] = X[i]
+    eigenvectors, centroids = KMeans(eigenvectors, N, K, K, True)
+    for i in range(X.shape[1]):
+        eigenvectors[i][0] = X[:, i]
     return eigenvectors
 
 
@@ -196,10 +196,10 @@ def main():
             N = int(input("Enter the number of data points: "))
             X = generate_data(N, K)
             plot_original(X)
-            X, centroids = KMeans(X, N, K, 2)
-            plot_clusters(K, X, centroids)
-            X = SpectralKMeans(X, N, K)
-            plot_clusters(K, X)
+            Xo, centroids = KMeans(X, N, K, 2)
+            plot_clusters(K, Xo, centroids)
+            Xs = SpectralKMeans(X, N, K)
+            plot_clusters(K, Xs)
             
         # Error condition
         elif comm != 4:
